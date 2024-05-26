@@ -1,3 +1,5 @@
+
+#TensorFlow Input Function for DNN standard 
 def input_fn(features, batch_size=256):
 	return tf.data.Dataset.from_tensor_slices(dict(features)).batch(batch.size)
 
