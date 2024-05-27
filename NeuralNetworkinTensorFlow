@@ -1,0 +1,62 @@
+#NeuralNetwork to classify articles of clothing 
+
+"""
+Goal of this Neural Network is to provide predictions regarding articles of clothing. 
+Optimizer: 
+
+"""
+
+import tensorflow as tf 
+from tensorflow import keras 
+
+import numpy as np 
+import matplotlib.pyplot as plt
+
+#60,000 training images in dataset, 10,000 testing images
+
+fashion_mnist = keras.datasets.fashion_mnist
+(train_images, train_labels_, (test_images, test_labels) = fashion_mnist.load_data()
+
+train_images.shape
+
+train_images[0,23,23] #looking at one pixel 
+
+#looking at first 10 train labels 
+train_labesl[:10]
+
+class_names = ['T-shirt/top, 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+#looking at images 
+plt.figure() 
+plt.imshow(train_images[1])
+plt.colorbar()
+plt.grid(False)
+plt.show()
+
+#Data Preprocessing 
+
+"""
+Goal of data preprocessing is to apply some preliminary transormations to our data before we input the data to our model.
+First step here is scaling all greyscale pixel values we have to between 0 and 1, this can be accomplihed by dividing each value
+in the training and testing sets by 255.0, smaller values are easier for our model to process.
+"""
+
+train_images = train_images / 255.0
+test_images= test_images / 255.0
+
+#Building the model
+
+"""
+Selecting a keras sequential model, 3 layers, feed-forward neural network (L to R). 
+Input layer consists of 784 neurons, 28 x 28
+"""
+model = keras.Sequential([
+    keras.layers.Flatten(input_shape=(28, 28)), #Input Layer 
+    keras.layers.Dense(128, activation='relu'), #Hidden Layer 
+    keras.layers.Dense(10, activation='softmax')
+])
+3:25:00. 
+
+
+
+
