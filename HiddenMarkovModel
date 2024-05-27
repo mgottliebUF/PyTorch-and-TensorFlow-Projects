@@ -1,0 +1,23 @@
+#On Google Collaborator 
+
+tfd = tfp.distributions #for ease of calling later on 
+initial_distribution = tfd.Ctegorical(probs=[0.8, 0.2]) #weather change probabilities 
+transition_distribution = tfd.Categorical(probs=[[0.5, 0.2], #can change these values to guess temperatures  
+                                                  [0.2, 0.8]])
+observation_distribution = tfd.Normal(loc=[0., 15.], scale = [5., 10.]
+
+#loc = mean, scale = standard deviation 
+
+#pulling from HD model in TensorFlow 
+
+model = tfd.HiddenMarkovModel(
+    initial_distribution=initial_distribution, 
+    transition_distribution=transition distribution,
+    observation_distribution=observation distribution,
+    num_steps=7)
+
+mean = model.mean()
+with tf.compat.v1.Session() as sess: 
+    print(mean.numpy())
+
+#naturally, the more days that go on the less effective this model will be 
