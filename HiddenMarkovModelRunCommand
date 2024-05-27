@@ -1,0 +1,7 @@
+##in Google Collaborator, utilizing TensorFlow V2
+
+mean = model.mean()
+#Need to use a session here to compute part of the graph 
+
+with tf.compat.v1.Session() as sess: 
+   print(mean.numpy())
