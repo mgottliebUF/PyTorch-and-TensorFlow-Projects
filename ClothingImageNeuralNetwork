@@ -39,6 +39,26 @@ model.compile(optimizer='adam',
 #training the model 
 model.fit(train_images, train_labels, epochs=8)
 
+"""
+Making predictions on multiple items at a time, always need to put things in the format of array 
+"""
+
+predictions = model.predict(test_images)
+test_images.shape
+print(class_names[np.argmax(predictions[0])])
+
+"""
+Every image has a list for what image it thinks it is, 
+we see the probability 
+np.argmax returns the index of the highest value within the list predictions 
+Checking based on class 
+class_names outside of np.argmax delivers what classname is associated 
+
+find the maximum value of predictions list of element 0 which corresponds to a numerical value 
+which represents the highest probability of one of the 10 classes of clothing that is seen above
+this value can be passed through class names and correspond with the same index we see for clothing
+"""
+
 #87.1% testing data accuracy, pretty good model 
 test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=1)
 print('Test accuracy', test_acc)
