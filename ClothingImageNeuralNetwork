@@ -1,0 +1,44 @@
+"""
+Adjusting pixel values for greyscale (255.0 count), preprocesing most complex part of NN
+Base Sequential format NN in Keras, only left to right processing, passing through layers 
+"""
+
+%tensorflow_version 2.x 
+import tensorflow as tf 
+from tensorflow import keras 
+
+import numpy as np 
+import matplotlib.pyplot as plt 
+
+#loading the dataset for images
+fashion_mnist = keras.datasets.fashion_mnist
+
+(train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+
+class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+train_images = train_images / 255.0
+
+test_images = test_images / 255.0 
+
+
+model = keras.Sequential([
+    keras.layers.Flatten(input_shape=(28, 28)), #Input layer, takes in shape of 28 x 28 into 784 pixels
+    keras.layers.Dense(128, activation='relu'), #Hidden layer, Dense layer, should gen. be smaller than first (every neuron in previous network is connected to this one)
+    keras.layers.Dense(10, activation='softmax')
+])
+
+"""
+Hyperparameters to play around with optimizer, loss, metrics, activation
+"""
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+#training the model 
+model.fit(train_images, train_labels, epochs=10)
+
+#87.1% testing data accuracy, pretty good model 
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=1)
+print('Test accuracy', test_acc)
