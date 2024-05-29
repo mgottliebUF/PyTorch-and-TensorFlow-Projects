@@ -1,0 +1,83 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+class NesterovMomentumOptimizer:
+    def __init__(self, learning_rate=0.01, momentum=0.9):
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.velocity = None
+
+    def initialize_velocity(self, shape):
+        if self.velocity is None:
+            self.velocity = np.zeros(shape)
+
+    def update(self, params, gradients):
+        if self.velocity is None:
+            self.initialize_velocity(params.shape)
+
+        self.velocity = self.momentum * self.velocity - self.learning_rate * gradients
+        params += self.momentum * self.momentum * self.velocity - (1 + self.momentum) * self.learning_rate * gradients
+        return params
+
+# Generating fake data
+def generate_fake_data(num_samples=100):
+    np.random.seed(42)
+    X = np.random.rand(num_samples, 1) * 10  # Random features in range [0, 10)
+    noise = np.random.randn(num_samples, 1)  # Gaussian noise
+    y = 2.5 * X + 1.5 + noise  # Linear relationship with noise
+    return X, y
+
+# Linear modeling
+def predict(X, params):
+    return X @ params
+
+# Mean Squared Error cost function and gradient
+def cost_function(X, y, params):
+    predictions = predict(X, params)
+    return np.mean((predictions - y) ** 2)
+
+def gradient(X, y, params):
+    predictions = predict(X, params)
+    return (2 / X.shape[0]) * X.T @ (predictions - y)
+
+# Initialize params
+X, y = generate_fake_data()
+params = np.random.randn(1, 1)  # Starting point
+optimizer = NesterovMomentumOptimizer(learning_rate=0.01, momentum=0.9)
+
+# Training loop
+num_iterations = 100
+costs = []
+params_history = []
+
+for iteration in range(num_iterations):
+    grads = gradient(X, y, params)
+    params = optimizer.update(params, grads)
+    cost = cost_function(X, y, params)
+    costs.append(cost)
+    params_history.append(params.copy())
+    if iteration % 10 == 0:
+        print(f"Iteration {iteration}: params = {params.flatten()}, cost = {cost}")
+
+# Visualization
+plt.figure(figsize=(14, 6))
+
+# Plot cost function
+plt.subplot(1, 2, 1)
+plt.plot(costs, label='Cost')
+plt.xlabel('Iteration')
+plt.ylabel('Cost')
+plt.title('Cost Function Over Iterations')
+plt.legend()
+
+# Plot parameter updates
+plt.subplot(1, 2, 2)
+params_history = np.array(params_history).reshape(-1, 1)
+plt.plot(params_history, label='Parameter Value')
+plt.xlabel('Iteration')
+plt.ylabel('Parameter Value')
+plt.title('Parameter Updates Over Iterations')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
