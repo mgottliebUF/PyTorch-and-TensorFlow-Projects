@@ -1,0 +1,62 @@
+"""
+Data Collection: 
+Shall have labeled dental diseases 
+Shall have diverse and representative data for certain dental diseases
+"""
+
+"""
+Data Preprocessing: 
+Shall resize and normalize the x-ray images
+Shall split the dataset into training, test sets (80/20)
+"""
+
+"""
+Model Building: 
+Python, TensorFlow/Keras/NumPy
+
+Convolutional Neural Network for Image Classification 
+Transfer learning with an existing pre=trained model (ResNet, Inception)
+Leverage existing features
+"""
+
+"""
+Model training 
+Appropriate loss function and optimizer for image classification 
+Loss Function: 
+Optimizer: 
+Monitoring for overfitting: 
+"""
+
+"""
+Model Evaluation
+Metrics: 
+Accuracy: 
+Precision: 
+Recall:
+F1: 
+"""
+
+"""
+Deploying the model 
+Flask for backend server 
+HTML for frontend
+"""
+
+"""
+Integration 
+endpoints for image upload, model inference, returning results
+"""
+
+"""
+User Authentication and Authorization 
+Flask- login
+PostgreSQL 
+Access Control - 40 images per week per user
+"""
+
+""
+Deployment: 
+Google Cloud? 
+Heroku 
+Monitor Usage and Performance
+"""
