@@ -1,0 +1,84 @@
+import json
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from PIL import Image
+
+# Load the JSON file
+json_path = 'C:\\Student\\Student\\student.json'
+with open(json_path, 'r') as file:
+    data = json.load(file)
+
+# Function to parse the JSON data
+def parse_annotations(data):
+    annotations = []
+    for item in data:
+        image_id = item['External ID']
+        description = item['Description']
+        objects = item['Label']['objects']
+        polygons = [obj['polygons'] for obj in objects if 'polygons' in obj]
+        annotations.append({
+            'image_id': image_id,
+            'description': description,
+            'polygons': polygons
+        })
+    return annotations
+
+# Parse the annotations
+annotations = parse_annotations(data)
+
+# Function to display an image with annotations and relevant text
+def display_image_with_annotations(image_id, description, polygons, base_path):
+    image_path = os.path.join(base_path, image_id)  # Adjust the path as needed
+    if not os.path.exists(image_path):
+        print(f"Image {image_id} not found.")
+        return
+    
+    image = Image.open(image_path)
+    
+    fig, ax = plt.subplots(1, 2, figsize=(14, 7))
+    
+    # Display original image
+    ax[0].imshow(image, cmap='gray')
+    ax[0].set_title('Original Image')
+    
+    # Display image with annotations
+    ax[1].imshow(image, cmap='gray')
+    for polygon in polygons:
+        if polygon != 'none':  # Check if polygon data is available
+            for points in polygon:
+                poly = patches.Polygon(points, closed=True, fill=False, edgecolor='r', linewidth=2)
+                ax[1].add_patch(poly)
+    ax[1].set_title('Annotated Image')
+    
+    # Display the description as text
+    fig.suptitle(f"Image ID: {image_id}\nDescription: {description}", fontsize=14)
+    
+    plt.show()
+
+# Function to analyze and display image features based on an input image number
+def analyze_image(image_number):
+    if not 1 <= image_number <= 1051:
+        print("Please enter a number between 1 and 1051.")
+        return
+    
+    found = False
+    for annotation in annotations:
+        if annotation['image_id'].split('.')[0] == str(image_number):
+            print(f"Image ID: {annotation['image_id']}")
+            print(f"Description: {annotation['description']}")
+            display_image_with_annotations(annotation['image_id'], annotation['description'], annotation['polygons'], 'C:\\Radiographs\\Radiographs')
+            found = True
+            break
+    if not found:
+        print(f"No annotations found for image number {image_number}.")
+
+# Example usage of the analysis function
+while True:
+    try:
+        image_number = int(input("Enter the image number to analyze (1-1051): "))
+        analyze_image(image_number)
+        break
+    except ValueError:
+        print("Invalid input. Please enter a valid number between 1 and 1051.")
