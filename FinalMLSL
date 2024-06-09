@@ -6,16 +6,13 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_squared_error, explained_variance_score, r2_score
 import matplotlib.pyplot as plt
 from fpdf import FPDF
-import time
 import ipywidgets as widgets
-from IPython.display import display, FileLink
-import datetime
+from IPython.display import display
 
-# Function to fetch stock data
 def get_stock_data(ticker, retries=3, delay=5):
     for attempt in range(retries):
         try:
-            data = yf.download(ticker, period='1y', interval='1d')
+            data = yf.download(ticker, start="2023-01-01", end=pd.Timestamp.today().strftime('%Y-%m-%d'), interval='1d')
             if data.empty:
                 raise ValueError(f"No data found for ticker '{ticker}'")
             return data
@@ -27,7 +24,6 @@ def get_stock_data(ticker, retries=3, delay=5):
                 print(f"Failed to get ticker '{ticker}' after {retries} attempts")
                 return None
 
-# Function to calculate performance metrics
 def calculate_performance_metrics(test_target, predictions):
     mse = mean_squared_error(test_target, predictions)
     rmse = np.sqrt(mse)
@@ -36,7 +32,6 @@ def calculate_performance_metrics(test_target, predictions):
     
     return rmse, evs, r2
 
-# Function to backtest the trading strategy
 def backtest_strategy(test_target, predictions, max_trades_per_week=4, initial_investment=10000):
     cash = initial_investment
     stock_held = 0
@@ -86,10 +81,10 @@ def backtest_strategy(test_target, predictions, max_trades_per_week=4, initial_i
         daily_profits.append(daily_profit)
     
     final_value = cash + stock_held * test_target.iloc[-1]
+    total_profit_percentage = (final_value / initial_investment - 1) * 100
     
-    return transactions, final_value, daily_profits
+    return transactions, final_value, daily_profits, total_profit_percentage
 
-# Function to print performance metrics
 def print_performance_metrics(rmse, evs, r2):
     print(f'Root Mean Squared Error (RMSE): {rmse}')
     print(' - RMSE measures the average magnitude of the errors between predicted and actual values. Lower values indicate better performance.')
@@ -98,15 +93,13 @@ def print_performance_metrics(rmse, evs, r2):
     print(f'R^2 Score: {r2}')
     print(' - R^2 (coefficient of determination) indicates how well the predicted values match the actual values. It ranges from 0 to 1, where 1 means perfect prediction.')
 
-# Function to calculate Sharpe Ratio
 def calculate_sharpe_ratio(daily_profits, risk_free_rate=0.01):
     mean_daily_return = np.mean(daily_profits)
     std_daily_return = np.std(daily_profits)
     sharpe_ratio = (mean_daily_return - risk_free_rate) / std_daily_return
     return sharpe_ratio
 
-# Function to save results to a PDF
-def save_to_pdf(report_title, stock_ticker, best_overall_k, best_overall_profit, best_overall_sharpe_ratio, best_overall_recommendation, best_overall_price, transactions_df, daily_profits):
+def save_to_pdf(report_title, stock_ticker, best_overall_k, best_overall_profit, best_overall_sharpe_ratio, best_overall_recommendation, best_overall_price, transactions_df, daily_profits, total_profit_percentage):
     pdf = FPDF()
     pdf.add_page()
 
@@ -119,23 +112,18 @@ def save_to_pdf(report_title, stock_ticker, best_overall_k, best_overall_profit,
     pdf.cell(200, 10, f"Profit: ${best_overall_profit:.2f}", ln=True)
     pdf.cell(200, 10, f"Sharpe Ratio: {best_overall_sharpe_ratio:.2f}", ln=True)
     pdf.cell(200, 10, f"Current Recommendation: {best_overall_recommendation} at price ${best_overall_price:.2f}", ln=True)
-    
+    pdf.cell(200, 10, f"Total Profit Percentage: {total_profit_percentage:.2f}%", ln=True)
     pdf.cell(200, 10, f"Percentage Profit per Day: {np.mean(daily_profits) * 100:.2f}%", ln=True)
     
     pdf.cell(200, 10, "Transactions Table:", ln=True)
     
     pdf.set_font("Arial", '', 10)
     for i in range(len(transactions_df)):
-        profit = transactions_df.iloc[i]['Profit']
-        if transactions_df.iloc[i]['Action'] == 'BUY':
-            profit = 0  # Ongoing trade profit should be 0
-        pdf.cell(200, 10, f"{transactions_df.iloc[i]['Date']} - {transactions_df.iloc[i]['Action']} - {transactions_df.iloc[i]['Shares']} shares at ${transactions_df.iloc[i]['Price']} - Profit: ${profit:.2f}", ln=True)
+        pdf.cell(200, 10, f"{transactions_df.iloc[i]['Date']} - {transactions_df.iloc[i]['Action']} - {transactions_df.iloc[i]['Shares']} shares at ${transactions_df.iloc[i]['Price']} - Profit: ${transactions_df.iloc[i]['Profit']:.2f}", ln=True)
     
-    pdf_file = "stock_analysis_report.pdf"
-    pdf.output(pdf_file)
-    return pdf_file
+    pdf.output("stock_analysis_report.pdf")
+    print("PDF report generated: stock_analysis_report.pdf")
 
-# Function to analyze the stock
 def analyze_stock(stock_ticker, k_values):
     best_overall_k = None
     best_overall_profit = -float('inf')
@@ -144,30 +132,22 @@ def analyze_stock(stock_ticker, k_values):
     best_overall_price = None
     best_overall_transactions_df = None
     best_overall_daily_profits = None
+    best_overall_total_profit_percentage = None
     
     print(f"\nAnalyzing stock: {stock_ticker}")
     
-    # Fetch historical stock data for the last year
+    # Fetch historical stock data for the current year
     data = get_stock_data(stock_ticker)
     
     if data is not None:
         print("Data retrieved successfully")
         
-        # EDA Procedure: Preparing and visualizing the data
+        # Prepare the data
         print("Preparing the data...")
         data['Price_Change'] = data['Close'].pct_change()
         data['High_Low_Spread'] = data['High'] - data['Low']
         data['Average_Price'] = (data['High'] + data['Low']) / 2
         data.dropna(inplace=True)
-
-        # Plotting EDA
-        plt.figure(figsize=(14, 7))
-        plt.plot(data.index, data['Close'], label='Closing Price', color='blue')
-        plt.title(f'Closing Prices for {stock_ticker}')
-        plt.xlabel('Date')
-        plt.ylabel('Price')
-        plt.legend()
-        plt.show()
 
         # Define the features and target variable
         features = data[['Close', 'High_Low_Spread', 'Average_Price']]
@@ -191,6 +171,7 @@ def analyze_stock(stock_ticker, k_values):
         best_sharpe_ratio = None
         best_transactions_df = None
         best_daily_profits = None
+        best_total_profit_percentage = None
 
         for k in k_values:
             print(f"\nRunning kNN with k={k}...")
@@ -225,10 +206,11 @@ def analyze_stock(stock_ticker, k_values):
 
             # Backtest the strategy
             print("\nBacktesting the strategy...")
-            transactions, final_value, daily_profits = backtest_strategy(test_target, predictions)
+            transactions, final_value, daily_profits, total_profit_percentage = backtest_strategy(test_target, predictions)
 
             print(f'\nInitial Investment: 10000')
             print(f'Final Value after Backtesting: {final_value}')
+            print(f'Total Profit Percentage: {total_profit_percentage:.2f}%')
             
             sharpe_ratio = calculate_sharpe_ratio(daily_profits)
 
@@ -241,6 +223,7 @@ def analyze_stock(stock_ticker, k_values):
                 best_transactions_df = pd.DataFrame(transactions, columns=['Date', 'Action', 'Shares', 'Price'])
                 best_transactions_df['Profit'] = best_transactions_df.apply(lambda row: (row['Shares'] * row['Price'] if row['Action'] == 'SELL' else -row['Shares'] * row['Price']), axis=1).cumsum()
                 best_daily_profits = daily_profits
+                best_total_profit_percentage = total_profit_percentage
 
             # Recommendation based on the last prediction
             recommendation = "BUY" if predictions[-1] > test_target.iloc[-1] else "SELL"
@@ -260,35 +243,65 @@ def analyze_stock(stock_ticker, k_values):
             plt.legend()
             plt.show()
 
-        return (best_k, best_profit, best_sharpe_ratio, best_recommendation, best_price, best_transactions_df, best_daily_profits)
+        return (best_k, best_profit, best_sharpe_ratio, best_recommendation, best_price, best_transactions_df, best_daily_profits, best_total_profit_percentage)
     else:
         print("Failed to retrieve stock data. Please try again with a different ticker.")
         return None
 
-# Function to handle PDF generation button click
 def generate_pdf_button_handler(event):
-    pdf_file = save_to_pdf("Stock Analysis Report", stock_ticker, best_k, best_profit, best_sharpe_ratio, best_recommendation, best_price, best_transactions_df, best_daily_profits)
-    display(FileLink(pdf_file))
+    save_to_pdf("Stock Analysis Report", stock_ticker, best_k, best_profit, best_sharpe_ratio, best_recommendation, best_price, best_transactions_df, best_daily_profits, best_total_profit_percentage)
+
+def input_trades():
+    trades = []
+    for i in range(3):
+        ticker = input(f"Enter the ticker for trade {i+1}: ").strip().upper()
+        purchase_price = float(input(f"Enter the purchase price for {ticker}: ").strip())
+        shares = float(input(f"Enter the number of shares for {ticker}: ").strip())
+        trades.append((ticker, purchase_price, shares))
+    return trades
 
 # Get the recommended k values from user input
-k_values = input("Enter three different k values separated by commas (e.g., 3,5,7): ").strip().split(',')
+k_values = input("Enter three different k values separated by commas (e.g., 3,6,8): ").strip().split(',')
 k_values = [int(k.strip()) for k in k_values]
 
 # Get the stock ticker from user input
-stock_ticker = input("Enter the stock ticker symbol: ").strip().upper()
+stock_ticker = input("Enter the stock ticker symbol for analysis: ").strip().upper()
+
+# Input trades from the user
+trades = input_trades()
 
 # Analyze the specified stock
 result = analyze_stock(stock_ticker, k_values)
 
 # Determine the best performing model
 if result:
-    best_k, best_profit, best_sharpe_ratio, best_recommendation, best_price, best_transactions_df, best_daily_profits = result
+    best_k, best_profit, best_sharpe_ratio, best_recommendation, best_price, best_transactions_df, best_daily_profits, best_total_profit_percentage = result
 
     # Bold statements for best performing model and current recommendation
     print(f"\n\n\033[1mBest Performing Stock: {stock_ticker} with k={best_k} and a profit of ${best_profit:.2f}\033[0m")
     print(f"\033[1mCurrent Recommendation: {best_recommendation} at price ${best_price:.2f}\033[0m")
     print(f"\033[1mPercentage Profit per Day: {np.mean(best_daily_profits) * 100:.2f}%\033[0m")
+    print(f"\033[1mTotal Profit Percentage: {best_total_profit_percentage:.2f}%\033[0m")
     print(f"\033[1mSharpe Ratio: {best_sharpe_ratio:.2f}\033[0m")
+
+    # Display trades
+    print("\nEntered Trades:")
+    for trade in trades:
+        ticker, purchase_price, shares = trade
+        current_price = yf.Ticker(ticker).history(period='1d')['Close'].iloc[-1]
+        profit = (current_price - purchase_price) * shares
+        # Recommendation logic based on profit/loss and KNN model prediction
+        if profit > 0:
+            if best_recommendation == "SELL":
+                recommended_action = "SELL"
+            else:
+                recommended_action = "HOLD"
+        else:
+            if best_recommendation == "BUY":
+                recommended_action = "BUY"
+            else:
+                recommended_action = "HOLD"
+        print(f"Ticker: {ticker}, Purchase Price: {purchase_price}, Shares: {shares}, Current Price: {current_price}, Profit: {profit}, Recommended Action: {recommended_action}")
 
     # PDF generation button
     button = widgets.Button(description="Generate PDF for this stock")
