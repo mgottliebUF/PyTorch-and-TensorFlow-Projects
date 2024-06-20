@@ -1,0 +1,52 @@
+import yfinance as yf
+import pandas as pd
+from datetime import datetime, timedelta
+
+# Define the ticker symbol
+ticker = 'AAPL'
+
+# Define the date range
+end_date = datetime.now()
+start_date = end_date - timedelta(days=3*365)
+
+# Download Apple stock data for the specified date range
+data = yf.download(ticker, start=start_date, end=end_date)
+
+# Calculate daily percentage change
+data['Pct Change'] = data['Adj Close'].pct_change() * 100
+
+# Find the days where the stock dropped 2% or more
+drop_days = data[data['Pct Change'] <= -2.33]
+
+# Initialize a list to store results
+results = []
+
+# Iterate over the drop days to find the next day's percentage change
+for date in drop_days.index:
+    next_day = date + pd.Timedelta(days=1)
+    if next_day in data.index:
+        next_day_change = data.loc[next_day, 'Pct Change']
+        drop_day_change = data.loc[date, 'Pct Change']
+        results.append((date, drop_day_change, next_day_change))
+
+# Calculate the average percentage change for the next day
+average_next_day_change = sum([result[2] for result in results]) / len(results) if results else 0
+
+# Calculate the number of days with a loss of 2% or more in each year
+drop_days_by_year = drop_days.groupby(drop_days.index.year).size()
+
+# Print the number of days with a loss of 2% or more in each year
+print("Number of days with a loss of 2% or more in each year:")
+for year, count in drop_days_by_year.items():
+    print(f"{year}: {count} days")
+
+# Print the average percentage change for the next day
+print(f"\nAverage Next Day Change: {average_next_day_change:.2f}%")
+
+# Print the average change per day of the next day following a 2% loss
+total_next_day_changes = len(results)
+print(f"Average Change per Day of the Next Day Following a 2% Loss: {average_next_day_change / total_next_day_changes:.4f}%\n")
+
+# Print the results with the drop day percentage decrease and the next day percentage change
+for date, drop_day_change, next_day_change in results:
+    print(f"Date: {date.date()}, Drop Day Change: {drop_day_change:.2f}%, Next Day Change: {next_day_change:.2f}%")
