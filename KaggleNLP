@@ -1,0 +1,113 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import re
+import os
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Dropout
+import seaborn as sns
+from sklearn.metrics import classification_report
+
+# Load data
+train = pd.read_csv('/kaggle/input/nlp-getting-started/train.csv')
+test = pd.read_csv('/kaggle/input/nlp-getting-started/test.csv')
+
+# Preserve the 'id' column in the test DataFrame for submission
+test_ids = test['id']
+
+# Dropping unnecessary columns from train data
+columns_to_drop = ['keyword', 'location']
+train = train.drop(columns=[col for col in columns_to_drop if col in train.columns])
+test = test.drop(columns=[col for col in columns_to_drop if col in test.columns])
+
+# Defining the text cleaning function, want to use re.sub 
+stop_words = set(stopwords.words('english'))
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text)
+    text = re.sub(r'[^a-z\s]', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+# Apply text cleaning, call clean_text
+train['text'] = train['text'].apply(clean_text)
+test['text'] = test['text'].apply(clean_text)
+
+# Prepare data for training
+X = train['text'].values
+y = train['target'].values
+
+#VECTOR!
+vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+X_tfidf = vectorizer.fit_transform(X).toarray()
+
+# Splitting the data
+X_train, X_val, y_train, y_val = train_test_split(X_tfidf, y, test_size=0.2, random_state=42)
+
+# Reshaping for CNN model input format
+X_train_cnn = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
+X_val_cnn = X_val.reshape((X_val.shape[0], X_val.shape[1], 1))
+
+# Defining the CNN model
+input_shape = (X_train.shape[1], 1)
+model = Sequential([
+    Conv1D(32, kernel_size=3, activation='relu', input_shape=input_shape),
+    MaxPooling1D(pool_size=2),
+    Flatten(),
+    Dense(64, activation='relu'),
+    Dropout(0.5),
+    Dense(1, activation='sigmoid')
+])
+
+model.summary()
+
+# Compiling the model
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Train the model
+num_epochs = 15
+batch_size = 64
+history = model.fit(X_train_cnn, y_train, epochs=num_epochs, validation_data=(X_val_cnn, y_val), batch_size=batch_size, verbose=2)
+
+# Plot training & validation accuracy values
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy', color='b', linestyle='--')
+plt.plot(history.history['accuracy'], label='Training Accuracy', color='g')
+plt.title('Model Accuracy Over Epochs')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Evaluating my model
+loss, accuracy = model.evaluate(X_val_cnn, y_val, verbose=0)
+print(f'Test Loss: {loss:.4f}')
+print(f'Test Accuracy: {accuracy:.4f}')
+
+# Preprocessing the test data
+xt = test['text'].values
+xt_tfidf = vectorizer.transform(xt).toarray()
+xt_cnn = xt_tfidf.reshape((xt_tfidf.shape[0], xt_tfidf.shape[1], 1))
+
+# Make predictions on the test data
+pred = model.predict(xt_cnn)
+
+# Convert predictions to class labels
+pred_classes = (pred > 0.5).astype(int).reshape(-1)
+
+# Add predictions to the test DataFrame
+test['target'] = pred_classes
+
+# Save the test DataFrame with predictions to a CSV file
+submission = pd.DataFrame({'id': test_ids, 'target': pred_classes})
+submission.to_csv("/kaggle/working/submission.csv", index=False)
+
+# Verify the file exists
+print(os.listdir('/kaggle/working/'))
